@@ -1,14 +1,5 @@
 #  Misinfo Guard
 
-![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)
-![Backend](https://img.shields.io/badge/Backend-Django-092E20?style=for-the-badge&logo=django&logoColor=white)
-![API](https://img.shields.io/badge/API-DRF-red?style=for-the-badge)
-![Queue](https://img.shields.io/badge/Queue-Celery-37814A?style=for-the-badge&logo=celery&logoColor=white)
-![Broker](https://img.shields.io/badge/Broker-Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
-![OCR](https://img.shields.io/badge/OCR-Tesseract-5C2D91?style=for-the-badge)
-![LLM](https://img.shields.io/badge/LLM-Groq-orange?style=for-the-badge)
-
-
 Automated fact-checking platform for verifying text and image-based claims using OCR, live web retrieval, and LAG-based reasoning.
 
 Misinfo Guard is a full-stack misinformation detection system designed to help users submit a claim, process it asynchronously, gather supporting evidence, and return a structured verification result. The project is built to be understandable for beginners while still reflecting production-style engineering practices such as background task processing, API-based architecture, and modular components.
@@ -90,19 +81,92 @@ For beginners, this project is also a strong example of how modern backend syste
 
 ## Project structure
 
+The repository follows a modular Django layout so each part of the system has a clear responsibility. This makes the code easier to understand, debug, and extend as the project grows.
+
 ```text
-misinfo-guard/
-├── frontend/              # Static UI files or templates
-├── backend/               # Django project and apps
-├── tasks/                 # Celery task definitions
-├── services/              # OCR, retrieval, scoring, LLM modules
-├── media/                 # Uploaded files
-├── requirements.txt       # Python dependencies
-├── .env                   # Environment variables
-└── README.md
+Misinfo-Guard/
+├── .env                  # Sample environment variables
+├── .gitignore            # Ignores virtual env, database, and secrets
+├── requirements.txt      # Python dependencies
+├── manage.py             # Django project entry point
+├── README.md             # Project documentation
+│
+├── core/                 # Global Django configuration
+│   ├── __init__.py
+│   ├── settings.py       # Installed apps, middleware, database, API keys
+│   ├── urls.py           # Main URL routing
+│   ├── asgi.py           # ASGI entry point
+│   ├── wsgi.py           # WSGI entry point
+│   └── celery.py         # Celery app configuration
+│
+├── claims/               # Main fact-checking application
+│   ├── __init__.py
+│   ├── admin.py          # Django admin registration
+│   ├── apps.py           # App configuration
+│   ├── models.py         # Database models for claims and results
+│   ├── views.py          # API endpoints and request handling
+│   ├── serializers.py    # Request and response validation
+│   ├── urls.py           # App-level routes
+│   ├── tasks.py          # Background verification jobs
+│   └── ai_engine.py      # OCR cleanup, retrieval, scoring, LLM logic
+│
+├── templates/            # HTML templates
+│   └── index.html        # Main frontend page
+│
+├── static/               # Static assets
+│   ├── css/
+│   ├── js/
+│   └── images/
+│
+└── db.sqlite3            # Local development database
 ```
 
-The exact folder names may differ in your repository, but this structure shows the intended separation of responsibilities.
+This structure follows the general Django idea of separating project-level configuration from app-level business logic, which improves maintainability in larger projects.
+
+## System flow
+
+The application uses asynchronous processing so the frontend does not freeze while verification is running.
+
+```mermaid
+flowchart TD
+    A[Client UI] -->|Submit text or image| B[Django DRF API]
+    B -->|Return task id and 202 Accepted| C[Client Polling Loop]
+    B -->|Queue task| D[Redis Broker]
+    D --> E[Celery Worker]
+
+    E --> F[OCR Processing
+Pytesseract]
+    E --> G[Evidence Retrieval
+Serper API and FAISS]
+    E --> H[LLM Reasoning
+Groq API]
+
+    F --> I[Claim Text]
+    G --> J[Ranked Evidence]
+    H --> K[Structured Verdict]
+
+    I --> L[Result Assembly]
+    J --> L
+    K --> L
+
+    L --> M[SQLite Database]
+    M --> N[Completed Result]
+    N --> C
+    C --> O[Frontend Renders Verdict]
+```
+
+### Step-by-step explanation
+1. The user submits a claim as text or image.
+2. Django receives the request and creates a task.
+3. Redis stores the queued task.
+4. Celery processes the task in the background.
+5. OCR extracts text if the input is an image.
+6. Retrieval gathers evidence from search and indexed data.
+7. The LLM evaluates the evidence and produces a structured result.
+8. The result is saved in SQLite.
+9. The frontend polls the backend and displays the final verification output.
+
+GitHub supports fenced code blocks and Mermaid diagrams in Markdown, which makes repository documentation easier to read and maintain for engineering projects [1][2][3]. Repository READMEs are also more useful when they clearly map folders to application responsibilities and help new contributors understand where key logic lives [4].
 
 ## Setup requirements
 
@@ -258,4 +322,3 @@ Contributions are welcome.
 ## License
 
 Add your preferred license here, such as MIT, Apache-2.0, or GPL.
-
