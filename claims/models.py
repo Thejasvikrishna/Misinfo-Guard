@@ -17,3 +17,12 @@ class Claim(models.Model):
     status = models.CharField(max_length=20, default='PENDING')
     created_at = models.DateTimeField(auto_now_add=True)
     timeframe = models.CharField(max_length=20, default='current')
+    class Evidence(models.Model):
+    claim = models.ForeignKey(
+        Claim,
+        related_name='evidences',
+        on_delete=models.CASCADE
+    )
+    source_url = models.TextField(default='unknown')
+    text = models.TextField()
+    score = models.FloatField()
