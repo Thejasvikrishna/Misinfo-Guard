@@ -1,4 +1,4 @@
-# 🛡️ Misinfo Guard
+#  Misinfo Guard
 
 ![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)
 ![Backend](https://img.shields.io/badge/Backend-Django-092E20?style=for-the-badge&logo=django&logoColor=white)
@@ -119,7 +119,7 @@ Before running the project, make sure the following are installed:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-repository/misinfo-guard.git
+git clone https://github.com/Thejasvikrishna/Misinfo-Guard.git
 cd misinfo-guard
 ```
 
