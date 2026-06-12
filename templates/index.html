@@ -52,4 +52,55 @@
                 <button onclick="setMode('image')" id="b-image" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 text-slate-500">Social Image</button>
                 <button onclick="setMode('url')" id="b-url" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 text-slate-500">News Link</button>
             </div>
+            <div id="inputs" class="space-y-4">
+                <textarea id="in-text" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl h-40 outline-none transition-all input-focus text-slate-700" placeholder="Paste a claim or social media post text..."></textarea>
+                
+                <div id="in-image-container" class="hidden">
+                    <div class="flex items-center justify-center w-full">
+                        <label class="flex flex-col items-center justify-center w-full h-40 border-2 border-slate-200 border-dashed rounded-2xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors">
+                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <svg class="w-8 h-8 mb-3 text-slate-400" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                <p id="upload-text" class="text-sm text-slate-500"><span class="font-semibold">Click to upload</span> screenshot</p>
+                            </div>
+                            <input type="file" id="in-image" accept="image/*" class="hidden" onchange="document.getElementById('upload-text').innerHTML = '<span class=\'font-bold text-blue-600\'>File selected:</span> ' + this.files[0].name" />
+                        </label>
+                    </div>
+                </div>
+
+                <input type="url" id="in-url" class="hidden w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none input-focus" placeholder="https://news-link.com">
+            </div>
+            <div class="mb-6">
+    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider text-center">Event Timeframe</label>
+    <div class="flex p-1.5 bg-slate-100 rounded-2xl">
+        <button type="button" id="btn-tf-current" onclick="setTimeframe('current')" class="flex-1 py-2 rounded-xl text-sm font-bold transition-all duration-200 bg-white shadow-sm text-blue-600">
+            Ongoing / Current
+        </button>
+        <button type="button" id="btn-tf-historical" onclick="setTimeframe('historical')" class="flex-1 py-2 rounded-xl text-sm font-bold transition-all duration-200 text-slate-500 hover:text-slate-700">
+            Past / Historical
+        </button>
+    </div>
+</div>
+
+    <button title="button "id="b-submit" ...>
+            <button onclick="verify()" id="goBtn" class="w-full mt-8 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-[0_10px_20px_rgba(37,99,235,0.3)] transition-all active:scale-95 flex items-center justify-center gap-2">
+                <span>Start AI Analysis</span>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </button>
+
+            <div id="loading" class="hidden mt-10 text-center">
+                <div class="loader w-12 h-12 border-4 border-slate-100 rounded-full mx-auto mb-4"></div>
+                <div class="space-y-1">
+                    <p class="text-blue-600 font-bold tracking-wide uppercase text-xs">Scanning Verified Sources</p>
+                    <p class="text-slate-400 text-xs italic">Consulting Llama  & Web Index...</p>
+                </div>
+            </div>
+
+            <div id="result" class="hidden mt-10 pt-10 border-t border-slate-100">
+                <div class="flex items-center justify-between mb-6">
+                    <div id="r-stance-badge" class="px-4 py-1.5 rounded-full text-sm font-black tracking-widest uppercase">
+                        <span id="r-stance"></span>
+                    </div>
+                    <span id="r-conf" class="text-xs font-bold py-1.5 px-3 bg-slate-900 text-white rounded-lg"></span>
+                </div>
+
             
