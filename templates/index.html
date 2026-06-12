@@ -102,5 +102,36 @@
                     </div>
                     <span id="r-conf" class="text-xs font-bold py-1.5 px-3 bg-slate-900 text-white rounded-lg"></span>
                 </div>
+                <div class="bg-blue-50/50 p-6 rounded-2xl mb-6">
+                    <p id="r-explain" class="text-slate-700 leading-relaxed text-md font-medium"></p>
+                </div>
+
+                <div>
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Evidence Citations</h4>
+                    <div id="r-sources" class="grid gap-3"></div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+    <script>
+        let mode = 'text';
+        let selectedTimeframe = 'current'; // 1. Global variable to store timeframe state
+
+        // 2. The missing function to handle the Timeframe button animations
+        function setTimeframe(tf) {
+            selectedTimeframe = tf;
+            const btnCurrent = document.getElementById('btn-tf-current');
+            const btnHistorical = document.getElementById('btn-tf-historical');
+
+            if (tf === 'current') {
+                btnCurrent.className = "flex-1 py-2 rounded-xl text-sm font-bold transition-all duration-200 bg-white shadow-sm text-blue-600";
+                btnHistorical.className = "flex-1 py-2 rounded-xl text-sm font-bold transition-all duration-200 text-slate-500 hover:text-slate-700";
+            } else {
+                btnHistorical.className = "flex-1 py-2 rounded-xl text-sm font-bold transition-all duration-200 bg-white shadow-sm text-blue-600";
+                btnCurrent.className = "flex-1 py-2 rounded-xl text-sm font-bold transition-all duration-200 text-slate-500 hover:text-slate-700";
+            }
+        }
 
             
