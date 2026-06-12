@@ -215,3 +215,95 @@ class MisinfoEngine:
         except Exception as e:
             print("❌ AI judge error:", e)
             return {"stance": "ERROR", "explanation": str(e), "confidence": 0.0}
+    # ═══════════════════════════════
+    # 🔍 COMBINED EVIDENCE
+    # ═══════════════════════════════
+    def get_top_evidence(self, claim_text: str) -> list:
+        if not claim_text:
+            return []
+
+        local = self.search_local(claim_text)
+        web   = self.search_web(claim_text)
+
+        print(f"📊 Evidence totals → Local: {len(local)} | Web: {len(web)}")
+        return local + web
+
+    
+    # ═══════════════════════════════
+    # 🔢 CONFIDENCE NORMALIZER
+    # ═══════════════════════════════
+    def normalize_confidence(self, conf) -> float:
+        if isinstance(conf, (int, float)):
+            return float(conf)
+        if isinstance(conf, str):
+            conf = conf.strip().lower()
+            mapping = {"high": 0.9, "medium": 0.6, "low": 0.3}
+            if conf in mapping:
+                return mapping[conf]
+            try:
+                return float(conf)
+            except Exception:
+                return 0.0
+        return 0.0
+    def clean_claim_text(self, raw_text: str) -> str:
+        """Uses AI to extract the core claim from messy OCR text."""
+        # If the text is already short, no need to clean it
+        if not self.client or len(raw_text.strip()) < 40:
+            return raw_text 
+
+        print("🧹 Cleaning noisy OCR text...")
+        try:
+            completion = self.client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a text cleaner. Your job is to extract the main factual claim "
+                            "from this messy OCR text. Ignore times, usernames, battery percentages, "
+                            "UI elements, and junk. Return ONLY the core claim in one clear sentence. "
+                            "Do not add any conversational text."
+                        )
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Raw OCR Text:\n{raw_text}"
+                    }
+                ],
+                temperature=0.1 # Low temperature for strict factual extraction
+            )
+            clean_text = completion.choices[0].message.content.strip()
+            print(f"✨ Cleaned Claim: {clean_text}")
+            return clean_text
+            
+        except Exception as e:
+            print(f"❌ Cleanup error: {e}")
+            return raw_text # Fallback to original text if API fails
+    def pre_classify_claim(self, text: str) -> dict:
+        """
+        Detects if a claim is satire, humor, or malicious out-of-context bait.
+        """
+        if not self.client:
+            return {"is_satire": False, "category": "clean"}
+            
+        try:
+            completion = self.client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are an intent classifier for a fact-checking app. Analyze the text and determine "
+                            "if it is intentional SATIRE/PARODY, malicious MALINFORMATION, or standard factual CLAIMS. "
+                            "Respond ONLY in a valid JSON object with keys: 'is_satire' (boolean) and 'category' (string: 'satire', 'malinformation', or 'factual')."
+                        )
+                    },
+                    {"role": "user", "content": f"Text to analyze: {text}"}
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.1
+            )
+            return json.loads(completion.choices.message.content)
+        except Exception as e:
+            print(f"❌ Pre-classification exception: {e}")
+            return {"is_satire": False, "category": "factual"}
