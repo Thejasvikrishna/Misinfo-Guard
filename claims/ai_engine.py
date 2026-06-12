@@ -1,3 +1,68 @@
+import os
+import json
+import faiss
+import requests
+from pathlib import Path
+from groq import Groq
+from sentence_transformers import SentenceTransformer
+from datetime import datetime
+
+# ─────────────────────────────────────────────────────────────
+# Load .env explicitly using the absolute path of this file.
+# This guarantees keys are read correctly regardless of the
+# working directory the Celery worker was started from.
+# ─────────────────────────────────────────────────────────────
+BASE_DIR = Path(__file__).resolve().parent.parent   # …/misinfo_guard/
+ENV_PATH = BASE_DIR / '.env'
+
+def _load_env_key(key: str) -> str | None:
+    """
+    Read a key from .env file directly (no CWD dependency).
+    Falls back to os.environ (handles docker / CI environments).
+    """
+    # 1. Check os.environ first (highest priority)
+    value = os.environ.get(key)
+    if value:
+        return value.strip()
+
+    # 2. Parse .env manually
+    if ENV_PATH.exists():
+        with open(ENV_PATH, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith('#') or '=' not in line:
+                    continue
+                k, _, v = line.partition('=')
+                if k.strip() == key:
+                    return v.strip()
+
+    return None
+
+
+FAISS_INDEX_PATH = str(BASE_DIR / 'misinfo_index.bin')
+
+
+class MisinfoEngine:
+    def __init__(self):
+        # ──────────────────────────
+        # 🔐 API KEYS  (absolute .env load)
+        # ──────────────────────────
+        self.groq_key   = _load_env_key('GROQ_API_KEY')
+        self.serper_key = _load_env_key('SERPER_API_KEY')
+
+        print(f"🔑 GROQ key loaded:   {'✅ YES' if self.groq_key   else '❌ MISSING'}")
+        print(f"🔑 SERPER key loaded: {'✅ YES' if self.serper_key else '❌ MISSING'}")
+
+        if self.groq_key:
+            self.client = Groq(api_key=self.groq_key)
+        else:
+            self.client = None
+
+        # ──────────────────────────
+        # 🧠 EMBEDDING MODEL
+        # ──────────────────────────
+        print("📦 Loading embedding model...")
+        self.model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
 
         # ──────────────────────────
         # 📚 LOCAL KNOWLEDGE BASE
