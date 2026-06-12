@@ -133,5 +133,104 @@
                 btnCurrent.className = "flex-1 py-2 rounded-xl text-sm font-bold transition-all duration-200 text-slate-500 hover:text-slate-700";
             }
         }
+        function setMode(m) {
+            // UI CLEANUP
+            document.getElementById('result').classList.add('hidden');
+            document.getElementById('loading').classList.add('hidden');
+            
+            document.getElementById('r-stance').innerText = "";
+            document.getElementById('r-explain').innerText = "";
+            document.getElementById('r-conf').innerText = "";
+            document.getElementById('r-sources').innerHTML = "";
+            
+            const fileInput = document.querySelector('#in-image-container input[type="file"]') || document.getElementById('in-image');
+            if (fileInput) fileInput.value = ""; 
+
+            const fileLabel = document.querySelector('#in-image-container p') || document.querySelector('#in-image-container span') || document.getElementById('file-upload-label');
+            if (fileLabel) fileLabel.innerText = "Drag and drop your screenshot here, or click to browse";
+
+            resetUI();
+
+            // SWITCH TAB MODE LOGIC
+            mode = m;
+            const modes = ['text', 'image', 'url'];
+            modes.forEach(x => {
+                const inputEl = x === 'image' ? document.getElementById('in-image-container') : document.getElementById('in-'+x);
+                const btnEl = document.getElementById('b-'+x);
+                
+                if (x === m) {
+                    inputEl.classList.remove('hidden');
+                    btnEl.className = "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 bg-white shadow-sm text-blue-600";
+                    if(x !== 'image' && inputEl) inputEl.focus();
+                } else {
+                    inputEl.classList.add('hidden');
+                    btnEl.className = "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 text-slate-500 hover:text-slate-700";
+                    if(x !== 'image' && inputEl) inputEl.value = "";
+                }
+            });
+        }
+
+        async function verify() {
+            const fd = new FormData();
+            fd.append('claim_type', mode);
+            
+            // 3. Append the timeframe state here alongside the other data!
+            fd.append('timeframe', selectedTimeframe); 
+
+            if (mode === 'text') fd.append('claim_text', document.getElementById('in-text').value);
+            else if (mode === 'url') fd.append('claim_text', document.getElementById('in-url').value);
+            else if (mode === 'image') {
+                const fileInput = document.getElementById('in-image');
+                if (fileInput.files.length > 0) fd.append('image', fileInput.files);
+                else return alert("Select an image first");
+            }
+
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('result').classList.add('hidden');
+            document.getElementById('goBtn').disabled = true;
+            document.getElementById('goBtn').classList.add('opacity-50');
+
+            try {
+                const res = await fetch('/api/v1/claims/', { method: 'POST', body: fd });
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    alert("Upload Error: " + JSON.stringify(data));
+                    resetUI();
+                    return;
+                }
+                
+                poll(data.id);
+            } catch (e) {
+                alert("Server connection failed: " + e.message);
+                resetUI();
+            }
+        }
+
+        async function poll(id) {
+            const interval = setInterval(async () => {
+                const r = await fetch(`/api/v1/claims/${id}/`);
+                const d = await r.json();
+                if (d.status === 'COMPLETED') {
+                    clearInterval(interval);
+                    show(d);
+                }
+            }, 1500);
+        }
+
+        async function sendFeedback(id, value) {
+            try {
+                const response = await fetch(`/api/v1/claims/${id}/feedback/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_correct: value })
+                });
+                const data = await response.json();
+                if (response.ok) alert("Thank you! Your feedback helps Misinfo Guard improve.");
+                else alert("Feedback failed: " + (data.error || "Unknown error"));
+            } catch (error) {
+                console.error("Network Error:", error);
+            }
+        }
 
             
