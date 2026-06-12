@@ -1,0 +1,23 @@
+#Web Framework & API
+Django>=4.2.0
+djangorestframework>=3.14.0
+django-cors-headers>=3.13.0
+
+#Asynchronous Task Queue
+celery>=5.3.0
+redis>=4.5.0
+
+#AI & LLM Interface
+groq>=0.5.0
+requests>=2.31.0
+
+#Vector Database & Embeddings(Local RAG)
+faiss-cpu>=1.7.4
+sentence-transformers>=2.2.2
+
+#Computer Vision & OCR
+pytesseract>=0.3.10
+pillow>=10.2.0
+
+#Environment Management
+python-dotenv>=1.0.0
