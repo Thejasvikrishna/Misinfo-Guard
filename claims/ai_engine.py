@@ -307,3 +307,69 @@ class MisinfoEngine:
         except Exception as e:
             print(f"❌ Pre-classification exception: {e}")
             return {"is_satire": False, "category": "factual"}
+    def expand_claim(self, text: str) -> list:
+        """
+        Generates two neutral paraphrased variations of the claim to bypass adversarial wording.
+        """
+        if not self.client:
+            return []
+            
+        try:
+            completion = self.client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a linguistic specialist. Generate exactly two distinct, neutrally-worded "
+                            "paraphrased versions of the given claim to optimize search engine retrieval. "
+                            "Respond ONLY in a valid JSON object with a single key 'paraphrases' containing an array of 2 strings."
+                        )
+                    },
+                    {"role": "user", "content": f"Claim: {text}"}
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.3
+            )
+            data = json.loads(completion.choices.message.content)
+            return data.get("paraphrases", [])
+        except Exception as e:
+            print(f"❌ Expansion exception: {e}")
+            return []
+
+    def call_adversarial_judge(self, claim_text: str, paraphrases: list, evidence_list: list) -> dict:
+        """
+        Final verification layer assessing semantic consistency across paraphrases.
+        """
+        context = "\n".join([f"- {e['text']}" for e in evidence_list if e.get('text')]) or "No evidence found."
+        paraphrase_str = ", ".join([f"'{p}'" for p in paraphrases])
+
+        try:
+            completion = self.client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are an expert adversarial fact-checker. You are given a main claim, its reworded paraphrases, and context evidence. "
+                            "Evaluate if the claim's core meaning changes or collapses when reworded (indicating out-of-context malinformation). "
+                            "Calculate a consistency_score between 0.0 and 1.0 based on how uniformly the evidence supports or refutes all variations. "
+                            "Respond ONLY in valid JSON with exactly these keys: stance, explanation, confidence, consistency_score. "
+                            "stance must be one of: SUPPORTED, REFUTED, UNVERIFIED."
+                        )
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Main Claim: {claim_text}\nParaphrases: [{paraphrase_str}]\n\nEvidence:\n{context}"
+                    }
+                ],
+                response_format={"type": "json_object"}
+            )
+            result = json.loads(completion.choices.message.content)
+            result['confidence'] = self.normalize_confidence(result.get('confidence', 0.0))
+            result['stance'] = result.get('stance', 'UNVERIFIED').upper()
+            return result
+        except Exception as e:
+            return {"stance": "ERROR", "explanation": str(e), "confidence": 0.0, "consistency_score": 0.0}
+# NOTE: No module-level singleton here.
+# tasks.py instantiates MisinfoEngine() fresh per task.
