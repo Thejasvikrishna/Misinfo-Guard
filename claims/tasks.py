@@ -79,3 +79,64 @@ def process_claim_pipeline(claim_id):
         claim.status = 'COMPLETED'
         claim.save()
         return
+        # --------------------------------------------------------
+    # STEP 2: Build a fresh engine per task to guarantee keys
+    #         are loaded from .env (avoids stale singleton issue)
+    # --------------------------------------------------------
+    engine = MisinfoEngine()
+
+    # --------------------------------------------------------
+    # STEP 3: Retrieve evidence (LOCAL + WEB)
+    # --------------------------------------------------------
+    evidence_list = engine.get_top_evidence(claim.claim_text)
+    print(f"📊 Total evidence pieces gathered: {len(evidence_list)}")
+
+    # --------------------------------------------------------
+    # STEP 4: Save evidence to DB
+    # --------------------------------------------------------
+    # Delete old evidence for this claim before saving fresh results
+    Evidence.objects.filter(claim=claim).delete()
+
+    for ev in evidence_list:
+        text = ev.get('text', '').strip()
+        source = ev.get('source', 'unknown')
+        score = float(ev.get('score', 0.0))
+
+        if not text:
+            continue  # skip empty snippets
+
+        # URLField requires a valid URL — normalise local_db source
+        if not source.startswith('http'):
+            source = 'https://local-knowledge-base.internal/' + source
+
+        try:
+            Evidence.objects.create(
+                claim=claim,
+                source_url=source,
+                text=text,
+                score=score,
+            )
+        except Exception as e:
+            print(f"⚠️ Evidence save error: {e}")
+
+    # --------------------------------------------------------
+    # STEP 5: AI Judge
+    # --------------------------------------------------------
+    result = engine.call_ai_judge(claim.claim_text, evidence_list)
+    print(f"🧠 AI Result: {result}")
+
+    # --------------------------------------------------------
+    # STEP 6: Save Verdict
+    # --------------------------------------------------------
+    Verdict.objects.update_or_create(
+        claim=claim,
+        defaults={
+            'stance': result.get('stance', 'UNVERIFIED'),
+            'explanation': result.get('explanation', ''),
+            'confidence': result.get('confidence', 0.0),
+        }
+    )
+
+    claim.status = 'COMPLETED'
+    claim.save()
+    print("✅ --- Task Finished Successfully ---")
