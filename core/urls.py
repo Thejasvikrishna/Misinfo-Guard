@@ -21,3 +21,7 @@ from verifier.views import ClaimViewSet
 
 router = DefaultRouter()
 router.register(r'claims', ClaimViewSet)
+urlpatterns = [
+    path('api/v1/', include(router.urls)),
+    path('admin/', admin.site.urls),
+]
