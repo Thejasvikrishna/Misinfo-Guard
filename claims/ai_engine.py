@@ -161,4 +161,57 @@ class MisinfoEngine:
 
         except Exception as e:
             print(f"❌ Web search exception: {e}")
-            return []
+            return []  
+    # ═══════════════════════════════
+    # 🧠 AI JUDGE (GROQ)
+    # ═══════════════════════════════
+    def call_ai_judge(self, claim_text: str, evidence_list: list, timeframe: str = "current") -> dict:
+        
+        # 1. Dynamically build the Temporal Rule based on user input
+        if timeframe == "current":
+            current_date = datetime.now().strftime("%B %d, %Y")
+            temporal_rule = (
+                f"CRITICAL RULE: Today is {current_date}. The user has explicitly marked this as an ONGOING/CURRENT claim. "
+                "You MUST reject older historical evidence and only validate this if the evidence confirms it is happening RIGHT NOW."
+            )
+        else:
+            temporal_rule = (
+                "The user has explicitly marked this as a HISTORICAL/PAST claim. "
+                "Evaluate the evidence based on past timelines. Older news articles are perfectly valid for this verification."
+            )
+
+        context = "\n".join([f"- {e['text']}" for e in evidence_list if e.get('text')]) or "No evidence found."
+
+        try:
+            completion = self.client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a professional fact-checker. "
+                            f"{temporal_rule} "  # INJECT THE DYNAMIC RULE HERE
+                            "Respond ONLY in valid JSON with exactly these keys: stance, explanation, confidence."
+                        )
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Claim: {claim_text}\n\nEvidence:\n{context}"
+                    }
+                ],
+                response_format={"type": "json_object"}
+            )
+
+            raw = completion.choices[0].message.content
+            result = json.loads(raw)
+        
+        # We include the original evidence_list so the frontend gets the links
+            result['evidences'] = evidence_list
+        
+            result['confidence'] = self.normalize_confidence(result.get('confidence', 0.0))
+            result['stance'] = result.get('stance', 'UNVERIFIED').upper()
+            return result
+
+        except Exception as e:
+            print("❌ AI judge error:", e)
+            return {"stance": "ERROR", "explanation": str(e), "confidence": 0.0}
