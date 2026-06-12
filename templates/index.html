@@ -232,5 +232,59 @@
                 console.error("Network Error:", error);
             }
         }
+        function show(d) {
+            resetUI();
+            document.getElementById('result').classList.remove('hidden');
+            
+            const verdict = d.verdict || {};
+            const stance = verdict.stance || 'UNVERIFIED';
+            const badge = document.getElementById('r-stance-badge');
+            
+            document.getElementById('r-stance').innerText = stance;
+            
+            if(stance === 'SUPPORTED') badge.className = "px-4 py-1.5 rounded-full text-sm font-black tracking-widest uppercase bg-emerald-100 text-emerald-700";
+            else if(stance === 'REFUTED') badge.className = "px-4 py-1.5 rounded-full text-sm font-black tracking-widest uppercase bg-rose-100 text-rose-700";
+            else badge.className = "px-4 py-1.5 rounded-full text-sm font-black tracking-widest uppercase bg-amber-100 text-amber-700";
+
+            document.getElementById('r-explain').innerText = verdict.explanation || '';
+            document.getElementById('r-conf').innerText = `${Math.round((verdict.confidence || 0) * 100)}% Confidence`;
+            
+            const evidences = d.evidences || [];
+            document.getElementById('r-sources').innerHTML = evidences.map((e, index) => {
+                let url = e.source_url || e.source || e.link || e.url || ""; 
+                const text = e.text || e.snippet || "View source document";
+
+                if (url && typeof url === "string" && url.length > 4) {
+                    if (!url.startsWith("http")) url = "https://" + url;
+                    return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="pointer-events: auto;" class="block relative z-10 cursor-pointer p-3 mb-2 bg-white border border-blue-200 rounded-xl text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-all truncate shadow-sm">
+                        🔗 Source [${index}]: ${text}
+                    </a>`;
+                } else {
+                    return `<div class="block p-3 mb-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 truncate shadow-sm">
+                        📄 Source [${index}]: ${text} <span class="text-red-400 italic">(Backend provided no URL)</span>
+                    </div>`;
+                }
+            }).join('') || '<p class="text-xs text-slate-400 italic">No specific citations returned by the server.</p>';
+            
+            // Render Feedback Buttons safely
+            const existingFeedback = document.getElementById('feedback-box');
+            if (existingFeedback) existingFeedback.remove();
+
+            const feedbackHTML = `
+                <div id="feedback-box" class="mt-4 flex gap-4 justify-center border-t pt-4">
+                    <p class="text-xs text-slate-500">Was this accurate?</p>
+                    <button onclick="sendFeedback(${d.id}, true)" class="text-emerald-600 font-bold hover:underline text-xs">Yes</button>
+                    <button onclick="sendFeedback(${d.id}, false)" class="text-rose-600 font-bold hover:underline text-xs">No</button>
+                </div>
+            `;
+            document.getElementById('r-explain').insertAdjacentHTML('afterend', feedbackHTML);
+        }
+
+        function resetUI() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('goBtn').disabled = false;
+            document.getElementById('goBtn').classList.remove('opacity-50');
+        }
+    </script>
 
             
