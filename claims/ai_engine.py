@@ -1,3 +1,68 @@
+import os
+import json
+import faiss
+import requests
+from pathlib import Path
+from groq import Groq
+from sentence_transformers import SentenceTransformer
+from datetime import datetime
+
+# ─────────────────────────────────────────────────────────────
+# Load .env explicitly using the absolute path of this file.
+# This guarantees keys are read correctly regardless of the
+# working directory the Celery worker was started from.
+# ─────────────────────────────────────────────────────────────
+BASE_DIR = Path(__file__).resolve().parent.parent   # …/misinfo_guard/
+ENV_PATH = BASE_DIR / '.env'
+
+def _load_env_key(key: str) -> str | None:
+    """
+    Read a key from .env file directly (no CWD dependency).
+    Falls back to os.environ (handles docker / CI environments).
+    """
+    # 1. Check os.environ first (highest priority)
+    value = os.environ.get(key)
+    if value:
+        return value.strip()
+
+    # 2. Parse .env manually
+    if ENV_PATH.exists():
+        with open(ENV_PATH, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith('#') or '=' not in line:
+                    continue
+                k, _, v = line.partition('=')
+                if k.strip() == key:
+                    return v.strip()
+
+    return None
+
+
+FAISS_INDEX_PATH = str(BASE_DIR / 'misinfo_index.bin')
+
+
+class MisinfoEngine:
+    def __init__(self):
+        # ──────────────────────────
+        # 🔐 API KEYS  (absolute .env load)
+        # ──────────────────────────
+        self.groq_key   = _load_env_key('GROQ_API_KEY')
+        self.serper_key = _load_env_key('SERPER_API_KEY')
+
+        print(f"🔑 GROQ key loaded:   {'✅ YES' if self.groq_key   else '❌ MISSING'}")
+        print(f"🔑 SERPER key loaded: {'✅ YES' if self.serper_key else '❌ MISSING'}")
+
+        if self.groq_key:
+            self.client = Groq(api_key=self.groq_key)
+        else:
+            self.client = None
+
+        # ──────────────────────────
+        # 🧠 EMBEDDING MODEL
+        # ──────────────────────────
+        print("📦 Loading embedding model...")
+        self.model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
 
         # ──────────────────────────
         # 📚 LOCAL KNOWLEDGE BASE
@@ -96,4 +161,57 @@
 
         except Exception as e:
             print(f"❌ Web search exception: {e}")
-            return []
+            return []  
+    # ═══════════════════════════════
+    # 🧠 AI JUDGE (GROQ)
+    # ═══════════════════════════════
+    def call_ai_judge(self, claim_text: str, evidence_list: list, timeframe: str = "current") -> dict:
+        
+        # 1. Dynamically build the Temporal Rule based on user input
+        if timeframe == "current":
+            current_date = datetime.now().strftime("%B %d, %Y")
+            temporal_rule = (
+                f"CRITICAL RULE: Today is {current_date}. The user has explicitly marked this as an ONGOING/CURRENT claim. "
+                "You MUST reject older historical evidence and only validate this if the evidence confirms it is happening RIGHT NOW."
+            )
+        else:
+            temporal_rule = (
+                "The user has explicitly marked this as a HISTORICAL/PAST claim. "
+                "Evaluate the evidence based on past timelines. Older news articles are perfectly valid for this verification."
+            )
+
+        context = "\n".join([f"- {e['text']}" for e in evidence_list if e.get('text')]) or "No evidence found."
+
+        try:
+            completion = self.client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a professional fact-checker. "
+                            f"{temporal_rule} "  # INJECT THE DYNAMIC RULE HERE
+                            "Respond ONLY in valid JSON with exactly these keys: stance, explanation, confidence."
+                        )
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Claim: {claim_text}\n\nEvidence:\n{context}"
+                    }
+                ],
+                response_format={"type": "json_object"}
+            )
+
+            raw = completion.choices[0].message.content
+            result = json.loads(raw)
+        
+        # We include the original evidence_list so the frontend gets the links
+            result['evidences'] = evidence_list
+        
+            result['confidence'] = self.normalize_confidence(result.get('confidence', 0.0))
+            result['stance'] = result.get('stance', 'UNVERIFIED').upper()
+            return result
+
+        except Exception as e:
+            print("❌ AI judge error:", e)
+            return {"stance": "ERROR", "explanation": str(e), "confidence": 0.0}
