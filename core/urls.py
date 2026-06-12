@@ -15,8 +15,28 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from verifier.views import ClaimViewSet
 
+router = DefaultRouter()
+router.register(r'claims', ClaimViewSet)
 urlpatterns = [
+    path('api/v1/', include(router.urls)),
     path('admin/', admin.site.urls),
 ]
+from django.contrib import admin
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from verifier.views import ClaimViewSet
+from verifier.views import home
+from django.conf import settings
+from django.conf.urls.static import static
+router = DefaultRouter()
+router.register(r'claims', ClaimViewSet)
+
+urlpatterns = [
+    path('api/v1/', include(router.urls)),
+    path('admin/', admin.site.urls),
+    path('', home, name='home'),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
