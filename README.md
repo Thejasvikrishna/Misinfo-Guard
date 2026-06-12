@@ -10,6 +10,7 @@
 ![Broker](https://img.shields.io/badge/Broker-Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
 ![OCR](https://img.shields.io/badge/OCR-Tesseract-5C2D91?style=for-the-badge)
 ![LLM](https://img.shields.io/badge/LLM-Groq-orange?style=for-the-badge)
+
 Automated fact-checking platform for verifying text and image-based claims using OCR, live web retrieval, and LAG-based reasoning.
 
 Misinfo Guard is a full-stack misinformation detection system designed to help users submit a claim, process it asynchronously, gather supporting evidence, and return a structured verification result. The project is built to be understandable for beginners while still reflecting production-style engineering practices such as background task processing, API-based architecture, and modular components.
