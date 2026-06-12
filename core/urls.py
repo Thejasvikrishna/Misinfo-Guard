@@ -32,3 +32,11 @@ from verifier.views import ClaimViewSet
 from verifier.views import home
 from django.conf import settings
 from django.conf.urls.static import static
+router = DefaultRouter()
+router.register(r'claims', ClaimViewSet)
+
+urlpatterns = [
+    path('api/v1/', include(router.urls)),
+    path('admin/', admin.site.urls),
+    path('', home, name='home'),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
