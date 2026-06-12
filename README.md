@@ -1,4 +1,7 @@
-#  Misinfo Guard
+#  Misinfo Guard 
+<p align="center">
+  <img src="static/images/logo.png" alt="Misinfo Guard Logo" width="160">
+</p>
 
 ![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)
 ![Backend](https://img.shields.io/badge/Backend-Django-092E20?style=for-the-badge&logo=django&logoColor=white)
